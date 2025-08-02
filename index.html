@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Axolotl Clicker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cloud.umami.is/script.js" data-website-id="d8c86780-e5be-41e5-a6dc-f84ceed23250"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-pink-300 via-purple-400 to-indigo-500 min-h-screen flex items-center justify-center p-4 text-gray-800">
+
+  <div id="messageModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-75 flex items-center justify-center transition-opacity duration-300">
+    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm m-4 transform transition-transform duration-300 scale-95 hover:scale-100">
+      <div class="flex justify-between items-center mb-4">
+        <h3 id="messageTitle" class="text-xl font-bold text-pink-600"></h3>
+        <button id="modalCloseButton" class="text-gray-400 hover:text-gray-600">×</button>
+      </div>
+      <p id="messageBody" class="text-gray-700"></p>
+    </div>
+  </div>
+
+  <div id="permissionModal" class="fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center">
+    <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm m-4 text-center">
+      <h3 class="text-xl font-bold text-purple-600 mb-4">Save Progress?</h3>
+      <p class="text-gray-700 mb-6">Do you want to save your game progress in your browser? This will allow you to continue where you left off.</p>
+      <div class="flex justify-center gap-4">
+        <button id="permissionYes" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-green-600 transition-colors">Yes</button>
+        <button id="permissionNo" class="bg-red-500 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-red-600 transition-colors">No</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="gameContent" class="hidden flex flex-col lg:flex-row items-center justify-center gap-8 w-full max-w-6xl">
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center border-4 border-purple-300">
+      <h1 class="text-5xl font-extrabold text-pink-600 mb-4 drop-shadow-md">Axolotl Clicker</h1>
+
+      <div id="status" class="space-y-1 mb-6">
+        <p class="text-2xl font-semibold">Points: <span id="points" class="font-mono">0</span></p>
+        <p class="text-lg">Points per click: <span id="pointsPerClick">1</span></p>
+        <p class="text-lg">Auto Point Giver Level: <span id="autoPointLevel">0</span></p>
+        <p class="text-lg">Total Clicks: <span id="clicks">0</span></p>
+      </div>
+
+      <div id="clickButton" class="w-48 h-48 mx-auto mb-6 cursor-pointer transition-transform duration-200 hover:scale-105"></div>
+
+      <div class="flex flex-col space-y-4">
+        <button id="upgradeButton" class="bg-purple-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+          Upgrade Click to Level 1 — Cost: <span id="upgradeCost">50</span>
+        </button>
+        <button id="autoUpgradeOneButton" class="bg-cyan-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+          Buy 1 Auto Point Giver — Cost: 500,000
+        </button>
+        <button id="autoUpgradeTenButton" class="bg-cyan-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+          Buy 10 Auto Point Givers — Cost: 4,750,000
+        </button>
+        <button id="doubleBoostButton" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+          ⚡ Double Points (15s) — Cost: 20,000
+        </button>
+        <a href="https://www.youtube.com/watch?v=WO_z3jteozU" target="_blank" class="block">
+          <button class="bg-purple-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full transform hover:scale-105 transition-transform">
+            Watch the Tutorial!
+          </button>
+        </a>
+      </div>
+      <button id="deleteProgressButton" class="mt-6 bg-red-500 text-white font-bold py-2 px-6 rounded-xl shadow-lg w-full transform hover:scale-105 transition-transform">
+        Delete All Progress
+      </button>
+    </div>
+
+    <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border-4 border-pink-300">
+      <h2 class="text-3xl font-bold text-purple-600 mb-4">Axolotl Skins</h2>
+      <div id="skinDisplay" class="mb-4"></div>
+      <div id="skinButtons" class="flex flex-wrap justify-center gap-2 mb-4"></div>
+      <p class="text-sm text-gray-500">Each skin costs 10,000 points.</p>
+    </div>
+  </div>
+
+  <script>
+    // Game state variables
+    let points = 0;
+    let pointsPerClick = 1;
+    let clickUpgradeLevel = 0;
+    let clickUpgradeCost = 50;
+    let autoPointLevel = 0;
+    let bonusMultiplierActive = false;
+    let clicks = 0;
+    let currentSkin = 0;
+    let ownedSkins = [0];
+    let canUseLocalStorage = false;
+
+    // Define skin colors for the axolotl
+    const skinColors = ['#FF69B4', '#9932CC', '#FFFF00', '#00FF00', '#00BFFF', '#FFD700', '#FF4500'];
+
+    // UI elements
+    const pointsEl = document.getElementById('points');
+    const pointsPerClickEl = document.getElementById('pointsPerClick');
+    const upgradeCostEl = document.getElementById('upgradeCost');
+    const autoPointLevelEl = document.getElementById('autoPointLevel');
+    const clicksEl = document.getElementById('clicks');
+    const clickButton = document.getElementById('clickButton');
+    const upgradeButton = document.getElementById('upgradeButton');
+    const autoUpgradeOneButton = document.getElementById('autoUpgradeOneButton');
+    const autoUpgradeTenButton = document.getElementById('autoUpgradeTenButton');
+    const doubleBoostButton = document.getElementById('doubleBoostButton');
+    const skinButtonsContainer = document.getElementById('skinButtons');
+    const gameContent = document.getElementById('gameContent');
+    const messageModal = document.getElementById('messageModal');
+    const messageTitleEl = document.getElementById('messageTitle');
+    const messageBodyEl = document.getElementById('messageBody');
+    const modalCloseButton = document.getElementById('modalCloseButton');
+    const permissionModal = document.getElementById('permissionModal');
+    const permissionYesBtn = document.getElementById('permissionYes');
+    const permissionNoBtn = document.getElementById('permissionNo');
+    const deleteProgressButton = document.getElementById('deleteProgressButton');
+
+    // Function to show the custom modal
+    function showModal(title, body) {
+        messageTitleEl.textContent = title;
+        messageBodyEl.innerHTML = body;
+        messageModal.classList.remove('hidden');
+    }
+
+    // Function to hide the custom modal
+    modalCloseButton.addEventListener('click', () => {
+        messageModal.classList.add('hidden');
+    });
+
+    // Helper function to get the SVG for the axolotl
+    function getAxolotlSVG(color) {
+      return `
+        <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="100" cy="120" rx="50" ry="60" fill="${color}" />
+          <circle cx="100" cy="60" r="40" fill="${color}" />
+          <circle cx="85" cy="55" r="5" fill="#000" />
+          <circle cx="115" cy="55" r="5" fill="#000" />
+          <path d="M85,75 Q100,90 115,75" stroke="#000" stroke-width="2" fill="none" />
+          <line x1="60" y1="40" x2="30" y2="20" stroke="#ff69b4" stroke-width="4" />
+          <line x1="60" y1="50" x2="25" y2="50" stroke="#ff69b4" stroke-width="4" />
+          <line x1="60" y1="60" x2="30" y2="80" stroke="#ff69b4" stroke-width="4" />
+          <line x1="140" y1="40" x2="170" y2="20" stroke="#ff69b4" stroke-width="4" />
+          <line x1="140" y1="50" x2="175" y2="50" stroke="#ff69b4" stroke-width="4" />
+          <line x1="140" y1="60" x2="170" y2="80" stroke="#ff69b4" stroke-width="4" />
+        </svg>`;
+    }
+
+    // Function to update the UI with current game state
+    function updateDisplay() {
+      pointsEl.textContent = points.toLocaleString();
+      pointsPerClickEl.textContent = pointsPerClick.toLocaleString();
+      upgradeCostEl.textContent = clickUpgradeCost.toLocaleString();
+      autoPointLevelEl.textContent = autoPointLevel.toLocaleString();
+      clicksEl.textContent = clicks.toLocaleString();
+      upgradeButton.innerHTML = `Upgrade Click to Level ${clickUpgradeLevel + 1} — Cost: <span id="upgradeCost">${clickUpgradeCost.toLocaleString()}</span>`;
+
+      // Visual feedback for double boost
+      if (bonusMultiplierActive) {
+        doubleBoostButton.classList.add('animate-pulse', 'bg-yellow-400');
+        doubleBoostButton.classList.remove('bg-yellow-500');
+      } else {
+        doubleBoostButton.classList.remove('animate-pulse', 'bg-yellow-400');
+        doubleBoostButton.classList.add('bg-yellow-500');
+      }
+
+      updateAxolotlSkin();
+      updateSkinButtons();
+    }
+
+    // Function to update the axolotl SVG
+    function updateAxolotlSkin() {
+      clickButton.innerHTML = getAxolotlSVG(skinColors[currentSkin]);
+    }
+
+    // Function to update the skin selection buttons
+    function updateSkinButtons() {
+      skinButtonsContainer.innerHTML = '';
+      skinColors.forEach((color, i) => {
+        const btn = document.createElement('div');
+        btn.classList.add('w-10', 'h-10', 'rounded-lg', 'cursor-pointer', 'border-4', 'transition-all', 'duration-200');
+        btn.style.backgroundColor = color;
+        if (ownedSkins.includes(i)) {
+          btn.title = 'Owned - Click to select';
+          btn.addEventListener('click', () => {
+            currentSkin = i;
+            updateDisplay();
+            saveGameState(); // Save state on skin change
+          });
+          btn.classList.add('border-purple-600');
+        } else {
+          btn.title = 'Buy for 10,000 points';
+          btn.classList.add('border-gray-300');
+          btn.addEventListener('click', () => {
+            if (points >= 10000) {
+              points -= 10000;
+              ownedSkins.push(i);
+              currentSkin = i;
+              showModal('Skin Purchased!', `You bought a new skin!`);
+              updateDisplay();
+              saveGameState(); // Save state on skin purchase
+            } else {
+              showModal('Not enough points!', 'You need 10,000 points to buy this skin.');
+            }
+          });
+        }
+        if (i === currentSkin) {
+          btn.classList.remove('border-gray-300', 'border-purple-600');
+          btn.classList.add('border-pink-500', 'scale-110');
+        }
+        skinButtonsContainer.appendChild(btn);
+      });
+    }
+
+    // Function to save the game state to Local Storage
+    function saveGameState() {
+        if (!canUseLocalStorage) return;
+        const saveData = {
+            points, pointsPerClick, clickUpgradeLevel, clickUpgradeCost,
+            autoPointLevel, bonusMultiplierActive, clicks, currentSkin, ownedSkins,
+        };
+        try {
+            localStorage.setItem('axolotlClickerSave', JSON.stringify(saveData));
+        } catch (e) {
+            console.error("Error saving to local storage:", e);
+        }
+    }
+
+    // Function to load the game state from Local Storage
+    function loadGameState() {
+        if (!canUseLocalStorage) return;
+        try {
+            const savedData = JSON.parse(localStorage.getItem('axolotlClickerSave'));
+            if (savedData) {
+                points = savedData.points || 0;
+                pointsPerClick = savedData.pointsPerClick || 1;
+                clickUpgradeLevel = savedData.clickUpgradeLevel || 0;
+                clickUpgradeCost = savedData.clickUpgradeCost || 50;
+                autoPointLevel = savedData.autoPointLevel || 0;
+                bonusMultiplierActive = savedData.bonusMultiplierActive || false;
+                clicks = savedData.clicks || 0;
+                currentSkin = savedData.currentSkin || 0;
+                ownedSkins = Array.isArray(savedData.ownedSkins) ? savedData.ownedSkins : [0];
+                showModal('Game Loaded!', 'Your game progress has been loaded from your browser.');
+            } else {
+                showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
+            }
+        } catch (e) {
+            console.error("Error loading from local storage:", e);
+            showModal('Loading Error', 'Failed to load saved game data. Starting a new game.');
+        }
+    }
+
+    // Reset game state to defaults
+    function resetGameState() {
+        points = 0;
+        pointsPerClick = 1;
+        clickUpgradeLevel = 0;
+        clickUpgradeCost = 50;
+        autoPointLevel = 0;
+        bonusMultiplierActive = false;
+        clicks = 0;
+        currentSkin = 0;
+        ownedSkins = [0];
+        updateDisplay();
+    }
+
+    // Event listeners
+    clickButton.addEventListener('click', () => {
+      let gain = pointsPerClick;
+      if (bonusMultiplierActive) gain *= 2;
+      points += gain;
+      clicks++;
+      updateDisplay();
+      saveGameState();
+    });
+
+    upgradeButton.addEventListener('click', () => {
+      if (points >= clickUpgradeCost) {
+        points -= clickUpgradeCost;
+        clickUpgradeLevel++;
+        pointsPerClick++;
+        clickUpgradeCost = Math.floor(clickUpgradeCost * 1.2);
+        updateDisplay();
+        saveGameState();
+      } else {
+        showModal('Not enough points!', 'You need more points to upgrade your click.');
+      }
+    });
+
+    autoUpgradeOneButton.addEventListener('click', () => {
+      const cost = 500000;
+      if (autoPointLevel >= 500) {
+        showModal('Max Level Reached', 'The maximum Auto Point Giver level is 500!');
+        return;
+      }
+      if (points >= cost) {
+        points -= cost;
+        autoPointLevel++;
+        updateDisplay();
+        saveGameState();
+      } else {
+        showModal('Not enough points!', `You need ${cost.toLocaleString()} points.`);
+      }
+    });
+
+    autoUpgradeTenButton.addEventListener('click', () => {
+      const canBuy = Math.min(10, 500 - autoPointLevel);
+      const cost = 4750000;
+      if (canBuy > 0 && points >= cost) {
+        points -= cost;
+        autoPointLevel += canBuy;
+        updateDisplay();
+        saveGameState();
+      } else if (autoPointLevel >= 500) {
+        showModal('Max Level Reached', 'The maximum Auto Point Giver level is 500!');
+      } else {
+        showModal('Not enough points!', `You need ${cost.toLocaleString()} points.`);
+      }
+    });
+
+    doubleBoostButton.addEventListener('click', () => {
+      const cost = 20000;
+      if (points >= cost && !bonusMultiplierActive) {
+        points -= cost;
+        bonusMultiplierActive = true;
+        showModal('Double Points!', 'You are now getting double points for 15 seconds!');
+        updateDisplay();
+        saveGameState();
+        setTimeout(() => {
+          bonusMultiplierActive = false;
+          showModal('Boost Expired', 'The double points boost has ended.');
+          updateDisplay();
+          saveGameState();
+        }, 15000);
+      } else if (bonusMultiplierActive) {
+        showModal('Boost Active', 'The double points boost is already active.');
+      } else {
+        showModal('Not enough points!', `You need ${cost.toLocaleString()} points.`);
+      }
+    });
+    
+    deleteProgressButton.addEventListener('click', () => {
+        showModal(
+            'Confirm Deletion',
+            `<p class="mb-4">Are you sure you want to delete all your game progress? This action cannot be undone.</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirmDeleteYes" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-red-600 transition-colors">Yes, Delete</button>
+                <button id="confirmDeleteNo" class="bg-gray-400 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-500 transition-colors">No, Cancel</button>
+            </div>`
+        );
+        document.getElementById('confirmDeleteYes').addEventListener('click', () => {
+            localStorage.removeItem('axolotlClickerSave');
+            messageModal.classList.add('hidden');
+            resetGameState();
+            showModal('Progress Deleted', 'Your game progress has been deleted. Starting a new game.');
+        });
+        document.getElementById('confirmDeleteNo').addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+    });
+
+    // Auto-point generation every second
+    setInterval(() => {
+        if (autoPointLevel > 500) autoPointLevel = 500;
+        points += autoPointLevel;
+        updateDisplay();
+        saveGameState();
+    }, 1000);
+
+    // Initial game setup and local storage permission
+    window.addEventListener('DOMContentLoaded', () => {
+        const hasPermission = localStorage.getItem('axolotlClickerPermission');
+        if (hasPermission === 'true') {
+            canUseLocalStorage = true;
+            permissionModal.classList.add('hidden');
+            const savedData = localStorage.getItem('axolotlClickerSave');
+            if (savedData) {
+                loadGameState();
+            } else {
+                showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
+            }
+            gameContent.classList.remove('hidden');
+            updateDisplay();
+        } else if (hasPermission === 'false') {
+            canUseLocalStorage = false;
+            permissionModal.classList.add('hidden');
+            gameContent.classList.remove('hidden');
+            updateDisplay();
+        } else {
+            // Show permission modal for the first time
+            permissionModal.classList.remove('hidden');
+        }
+    });
+
+    permissionYesBtn.addEventListener('click', () => {
+        canUseLocalStorage = true;
+        localStorage.setItem('axolotlClickerPermission', 'true');
+        permissionModal.classList.add('hidden');
+        const savedData = localStorage.getItem('axolotlClickerSave');
+        if (savedData) {
+            loadGameState();
+        } else {
+            showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
+        }
+        gameContent.classList.remove('hidden');
+        updateDisplay();
+    });
+
+    permissionNoBtn.addEventListener('click', () => {
+        canUseLocalStorage = false;
+        localStorage.setItem('axolotlClickerPermission', 'false');
+        permissionModal.classList.add('hidden');
+        gameContent.classList.remove('hidden');
+        updateDisplay();
+        showModal('Progress Not Saved', 'Your progress will not be saved. Please click "Yes" to save data on your next visit.');
+    });
+  </script>
+</body>
+</html>
