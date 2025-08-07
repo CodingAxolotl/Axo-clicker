@@ -8,6 +8,30 @@
   <script src="https://cloud.umami.is/script.js" data-website-id="d8c86780-e5be-41e5-a6dc-f84ceed23250"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
+
+    /* New CSS for the floating click points animation */
+    .click-point {
+        position: absolute;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        opacity: 1;
+        animation: floatAndFade 1s forwards;
+        pointer-events: none; /* Prevent clicks on the text itself */
+        user-select: none; /* Prevent text selection */
+    }
+
+    @keyframes floatAndFade {
+        0% {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        100% {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-pink-300 via-purple-400 to-indigo-500 min-h-screen flex items-center justify-center p-4 text-gray-800">
@@ -44,7 +68,10 @@
         <p class="text-lg">Total Clicks: <span id="clicks">0</span></p>
       </div>
 
-      <div id="clickButton" class="w-48 h-48 mx-auto mb-6 cursor-pointer transition-transform duration-200 hover:scale-105"></div>
+      <!-- The SVG has been replaced with an image tag -->
+      <div id="clickButton" class="w-48 h-48 mx-auto mb-6 cursor-pointer relative">
+        <img src="axolotl.WEBP" alt="A cute axolotl to click" class="w-full h-full object-contain transition-transform duration-200 hover:scale-105">
+      </div>
 
       <div class="flex flex-col space-y-4">
         <button id="upgradeButton" class="bg-purple-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
@@ -72,7 +99,9 @@
 
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border-4 border-pink-300">
       <h2 class="text-3xl font-bold text-purple-600 mb-4">Axolotl Skins</h2>
-      <div id="skinDisplay" class="mb-4"></div>
+      <!-- The skin display is no longer needed since we are using a single static image -->
+      <div id="skinDisplay" class="mb-4 hidden"></div>
+      <!-- Skins are now disabled -->
       <div id="skinButtons" class="flex flex-wrap justify-center gap-2 mb-4"></div>
       <p class="text-sm text-gray-500">Each skin costs 10,000 points.</p>
     </div>
@@ -115,6 +144,7 @@
     const permissionYesBtn = document.getElementById('permissionYes');
     const permissionNoBtn = document.getElementById('permissionNo');
     const deleteProgressButton = document.getElementById('deleteProgressButton');
+    const axolotlImage = document.querySelector('#clickButton img');
 
     // Function to show the custom modal
     function showModal(title, body) {
@@ -127,24 +157,6 @@
     modalCloseButton.addEventListener('click', () => {
         messageModal.classList.add('hidden');
     });
-
-    // Helper function to get the SVG for the axolotl
-    function getAxolotlSVG(color) {
-      return `
-        <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="100" cy="120" rx="50" ry="60" fill="${color}" />
-          <circle cx="100" cy="60" r="40" fill="${color}" />
-          <circle cx="85" cy="55" r="5" fill="#000" />
-          <circle cx="115" cy="55" r="5" fill="#000" />
-          <path d="M85,75 Q100,90 115,75" stroke="#000" stroke-width="2" fill="none" />
-          <line x1="60" y1="40" x2="30" y2="20" stroke="#ff69b4" stroke-width="4" />
-          <line x1="60" y1="50" x2="25" y2="50" stroke="#ff69b4" stroke-width="4" />
-          <line x1="60" y1="60" x2="30" y2="80" stroke="#ff69b4" stroke-width="4" />
-          <line x1="140" y1="40" x2="170" y2="20" stroke="#ff69b4" stroke-width="4" />
-          <line x1="140" y1="50" x2="175" y2="50" stroke="#ff69b4" stroke-width="4" />
-          <line x1="140" y1="60" x2="170" y2="80" stroke="#ff69b4" stroke-width="4" />
-        </svg>`;
-    }
 
     // Function to update the UI with current game state
     function updateDisplay() {
@@ -164,48 +176,28 @@
         doubleBoostButton.classList.add('bg-yellow-500');
       }
 
-      updateAxolotlSkin();
+      // We no longer need to update the axolotl skin SVG, but we still update the skin buttons
       updateSkinButtons();
     }
 
-    // Function to update the axolotl SVG
-    function updateAxolotlSkin() {
-      clickButton.innerHTML = getAxolotlSVG(skinColors[currentSkin]);
-    }
-
-    // Function to update the skin selection buttons
+    // Function to update the skin selection buttons (now disabled)
     function updateSkinButtons() {
       skinButtonsContainer.innerHTML = '';
       skinColors.forEach((color, i) => {
         const btn = document.createElement('div');
-        btn.classList.add('w-10', 'h-10', 'rounded-lg', 'cursor-pointer', 'border-4', 'transition-all', 'duration-200');
+        btn.classList.add('w-10', 'h-10', 'rounded-lg', 'border-4', 'transition-all', 'duration-200');
         btn.style.backgroundColor = color;
+        // The skins are now disabled, so we only need to show which ones are owned.
         if (ownedSkins.includes(i)) {
-          btn.title = 'Owned - Click to select';
-          btn.addEventListener('click', () => {
-            currentSkin = i;
-            updateDisplay();
-            saveGameState(); // Save state on skin change
-          });
-          btn.classList.add('border-purple-600');
+          btn.title = 'Owned Skin (Disabled)';
+          btn.classList.add('border-gray-400', 'cursor-not-allowed');
         } else {
-          btn.title = 'Buy for 10,000 points';
-          btn.classList.add('border-gray-300');
-          btn.addEventListener('click', () => {
-            if (points >= 10000) {
-              points -= 10000;
-              ownedSkins.push(i);
-              currentSkin = i;
-              showModal('Skin Purchased!', `You bought a new skin!`);
-              updateDisplay();
-              saveGameState(); // Save state on skin purchase
-            } else {
-              showModal('Not enough points!', 'You need 10,000 points to buy this skin.');
-            }
-          });
+          btn.title = 'Buy for 10,000 points (Disabled)';
+          btn.classList.add('border-gray-300', 'cursor-not-allowed', 'opacity-50');
         }
         if (i === currentSkin) {
-          btn.classList.remove('border-gray-300', 'border-purple-600');
+          // The current skin is still highlighted with a pink border
+          btn.classList.remove('border-gray-300', 'border-gray-400');
           btn.classList.add('border-pink-500', 'scale-110');
         }
         skinButtonsContainer.appendChild(btn);
@@ -264,17 +256,36 @@
         ownedSkins = [0];
         updateDisplay();
     }
+    
+    // Function to create and animate the floating point text
+    function createClickPoint(e) {
+        const clickPoint = document.createElement('div');
+        clickPoint.textContent = `+${pointsPerClick}`;
+        clickPoint.classList.add('click-point');
+
+        // Set position relative to the viewport
+        clickPoint.style.left = `${e.clientX}px`;
+        clickPoint.style.top = `${e.clientY}px`;
+        
+        document.body.appendChild(clickPoint);
+
+        // Remove the element after the animation is done
+        setTimeout(() => {
+            clickPoint.remove();
+        }, 1000); // Matches the animation duration
+    }
 
     // Event listeners
-    clickButton.addEventListener('click', () => {
+    axolotlImage.addEventListener('click', (e) => {
       let gain = pointsPerClick;
       if (bonusMultiplierActive) gain *= 2;
       points += gain;
       clicks++;
       updateDisplay();
       saveGameState();
+      createClickPoint(e); // Call the new function to show the floating points
     });
-
+    
     upgradeButton.addEventListener('click', () => {
       if (points >= clickUpgradeCost) {
         points -= clickUpgradeCost;
