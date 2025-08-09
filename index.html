@@ -64,6 +64,7 @@
       <div id="status" class="space-y-1 mb-6">
         <p class="text-2xl font-semibold">Points: <span id="points" class="font-mono">0</span></p>
         <p class="text-lg">Points per click: <span id="pointsPerClick">1</span></p>
+        <p class="text-lg">CPS: <span id="cps">0</span></p>
         <p class="text-lg">Auto Point Giver Level: <span id="autoPointLevel">0</span></p>
         <p class="text-lg">Total Clicks: <span id="clicks">0</span></p>
       </div>
@@ -119,6 +120,11 @@
     let currentSkin = 0;
     let ownedSkins = [0];
     let canUseLocalStorage = false;
+    let autoClickerWarningGiven = false;
+
+    // CPS related variables
+    let clicksThisSecond = 0;
+    let cps = 0;
 
     // Define skin colors for the axolotl
     const skinColors = ['#FF69B4', '#9932CC', '#FFFF00', '#00FF00', '#00BFFF', '#FFD700', '#FF4500'];
@@ -127,6 +133,7 @@
     const pointsEl = document.getElementById('points');
     const pointsPerClickEl = document.getElementById('pointsPerClick');
     const upgradeCostEl = document.getElementById('upgradeCost');
+    const cpsEl = document.getElementById('cps'); // New CPS element
     const autoPointLevelEl = document.getElementById('autoPointLevel');
     const clicksEl = document.getElementById('clicks');
     const clickButton = document.getElementById('clickButton');
@@ -163,6 +170,7 @@
       pointsEl.textContent = points.toLocaleString();
       pointsPerClickEl.textContent = pointsPerClick.toLocaleString();
       upgradeCostEl.textContent = clickUpgradeCost.toLocaleString();
+      cpsEl.textContent = cps.toLocaleString(); // Update CPS display
       autoPointLevelEl.textContent = autoPointLevel.toLocaleString();
       clicksEl.textContent = clicks.toLocaleString();
       upgradeButton.innerHTML = `Upgrade Click to Level ${clickUpgradeLevel + 1} — Cost: <span id="upgradeCost">${clickUpgradeCost.toLocaleString()}</span>`;
@@ -210,6 +218,7 @@
         const saveData = {
             points, pointsPerClick, clickUpgradeLevel, clickUpgradeCost,
             autoPointLevel, bonusMultiplierActive, clicks, currentSkin, ownedSkins,
+            autoClickerWarningGiven
         };
         try {
             localStorage.setItem('axolotlClickerSave', JSON.stringify(saveData));
@@ -233,6 +242,7 @@
                 clicks = savedData.clicks || 0;
                 currentSkin = savedData.currentSkin || 0;
                 ownedSkins = Array.isArray(savedData.ownedSkins) ? savedData.ownedSkins : [0];
+                autoClickerWarningGiven = savedData.autoClickerWarningGiven || false;
                 showModal('Game Loaded!', 'Your game progress has been loaded from your browser.');
             } else {
                 showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
@@ -254,6 +264,7 @@
         clicks = 0;
         currentSkin = 0;
         ownedSkins = [0];
+        autoClickerWarningGiven = false;
         updateDisplay();
     }
     
@@ -281,6 +292,7 @@
       if (bonusMultiplierActive) gain *= 2;
       points += gain;
       clicks++;
+      clicksThisSecond++; // Increment the clicks for CPS calculation
       updateDisplay();
       saveGameState();
       createClickPoint(e); // Call the new function to show the floating points
@@ -377,6 +389,29 @@
         points += autoPointLevel;
         updateDisplay();
         saveGameState();
+    }, 1000);
+
+    // CPS calculation and auto-clicker detection every second
+    setInterval(() => {
+        cps = clicksThisSecond;
+        clicksThisSecond = 0; // Reset counter for the next second
+        updateDisplay();
+
+        if (cps > 20) {
+            if (autoClickerWarningGiven) {
+                // Second offense: delete all progress and reload
+                localStorage.clear();
+                window.location.reload();
+            } else {
+                // First offense: show warning
+                autoClickerWarningGiven = true;
+                saveGameState();
+                showModal(
+                    'Auto Clicker Detected!',
+                    "Don't use an auto clicker! (If you use it again your progress will be deleted (over 20 CPS))"
+                );
+            }
+        }
     }, 1000);
 
     // Initial game setup and local storage permission
