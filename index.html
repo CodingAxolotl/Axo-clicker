@@ -109,6 +109,17 @@
   </div>
 
   <script>
+    // Failsafe check to prevent loading a game after auto-clicker punishment.
+    // This runs before the main game logic on page load.
+    const autoClickerWarningsKey = 'axolotlClickerWarnings';
+    const warningsOnLoad = parseInt(localStorage.getItem(autoClickerWarningsKey) || '0', 10);
+    if (warningsOnLoad >= 2) {
+        localStorage.removeItem('axolotlClickerSave');
+        localStorage.removeItem('axolotlClickerPermission');
+        localStorage.removeItem(autoClickerWarningsKey);
+        window.location.reload();
+    }
+
     // Game state variables
     let points = 0;
     let pointsPerClick = 1;
@@ -120,7 +131,7 @@
     let currentSkin = 0;
     let ownedSkins = [0];
     let canUseLocalStorage = false;
-    let autoClickerWarnings = 0; // Changed to a number to store persistent warnings
+    let autoClickerWarnings = parseInt(localStorage.getItem(autoClickerWarningsKey) || '0', 10);
 
     // CPS related variables
     let clicksThisSecond = 0;
@@ -217,8 +228,7 @@
         if (!canUseLocalStorage) return;
         const saveData = {
             points, pointsPerClick, clickUpgradeLevel, clickUpgradeCost,
-            autoPointLevel, bonusMultiplierActive, clicks, currentSkin, ownedSkins,
-            autoClickerWarnings
+            autoPointLevel, bonusMultiplierActive, clicks, currentSkin, ownedSkins
         };
         try {
             localStorage.setItem('axolotlClickerSave', JSON.stringify(saveData));
@@ -242,7 +252,6 @@
                 clicks = savedData.clicks || 0;
                 currentSkin = savedData.currentSkin || 0;
                 ownedSkins = Array.isArray(savedData.ownedSkins) ? savedData.ownedSkins : [0];
-                autoClickerWarnings = savedData.autoClickerWarnings || 0;
                 showModal('Game Loaded!', 'Your game progress has been loaded from your browser.');
             } else {
                 showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
@@ -399,13 +408,13 @@
 
         if (cps > 20) {
             autoClickerWarnings++;
-            saveGameState(); // Save the warning count
+            localStorage.setItem(autoClickerWarningsKey, autoClickerWarnings); // Save the warning count to a separate key
             
             if (autoClickerWarnings >= 2) {
                 // Second offense: delete all progress and reload
                 localStorage.removeItem('axolotlClickerSave');
                 localStorage.removeItem('axolotlClickerPermission');
-                localStorage.removeItem('axolotlClickerWarnings');
+                localStorage.removeItem(autoClickerWarningsKey);
                 window.location.reload();
             } else {
                 // First offense: show warning
