@@ -115,6 +115,18 @@
     </div>
   </div>
 
+  <!-- ID System Section -->
+  <div class="fixed bottom-0 left-0 right-0 bg-white bg-opacity-90 p-4 shadow-lg flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+    <div class="flex-grow w-full sm:w-auto">
+        <label for="idInput" class="sr-only">Enter Game ID</label>
+        <input type="text" id="idInput" placeholder="Enter Game ID to Import" class="w-full px-4 py-2 border border-gray-300 rounded-lg shadow-inner focus:outline-none focus:ring-2 focus:ring-purple-400">
+    </div>
+    <div class="flex space-x-2 w-full sm:w-auto">
+        <button id="importIdButton" class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-600 transition-colors w-full sm:w-auto">Import</button>
+        <button id="generateIdButton" class="bg-pink-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-pink-600 transition-colors w-full sm:w-auto">Generate ID</button>
+    </div>
+  </div>
+
   <script>
     // The key for auto-clicker warnings
     const autoClickerWarningsKey = 'axolotlClickerWarnings';
@@ -181,6 +193,9 @@
     const permissionNoBtn = document.getElementById('permissionNo');
     const deleteProgressButton = document.getElementById('deleteProgressButton');
     const axolotlImage = document.getElementById('axolotlImage');
+    const idInput = document.getElementById('idInput');
+    const generateIdButton = document.getElementById('generateIdButton');
+    const importIdButton = document.getElementById('importIdButton');
 
     // Function to show the custom modal
     function showModal(title, body) {
@@ -528,6 +543,63 @@
         gameContent.classList.remove('hidden');
         updateDisplay();
         showModal('Progress Not Saved', 'Your progress will not be saved. Please click "Yes" to save data on your next visit.');
+    });
+
+    // New ID system functions
+    function generateGameId() {
+        const saveData = {
+            points, pointsPerClick, clickUpgradeLevel, clickUpgradeCost,
+            autoPointLevel, clicks, currentSkin, ownedSkins
+        };
+        const jsonString = JSON.stringify(saveData);
+        // Using btoa (Base64) as a robust, built-in alternative to Base62
+        return btoa(jsonString);
+    }
+
+    function importGameId(idString) {
+        try {
+            const decodedString = atob(idString);
+            const loadedData = JSON.parse(decodedString);
+            if (loadedData) {
+                points = loadedData.points || 0;
+                pointsPerClick = loadedData.pointsPerClick || 1;
+                clickUpgradeLevel = loadedData.clickUpgradeLevel || 0;
+                clickUpgradeCost = loadedData.clickUpgradeCost || 50;
+                autoPointLevel = loadedData.autoPointLevel || 0;
+                clicks = loadedData.clicks || 0;
+                currentSkin = loadedData.currentSkin || 0;
+                ownedSkins = Array.isArray(loadedData.ownedSkins) ? loadedData.ownedSkins : [0];
+                bonusMultiplierActive = false; // Reset any active boost on import
+                showModal('Import Successful!', 'Your game progress has been loaded from the ID.');
+                updateDisplay();
+            } else {
+                showModal('Import Failed', 'The provided ID is invalid or corrupted.');
+            }
+        } catch (e) {
+            console.error("Error importing ID:", e);
+            showModal('Import Failed', 'An error occurred while importing the ID. Please check if it is correct.');
+        }
+    }
+
+    generateIdButton.addEventListener('click', () => {
+        const id = generateGameId();
+        idInput.value = id;
+        idInput.select();
+        try {
+            document.execCommand('copy');
+            showModal('ID Generated & Copied!', 'Your game ID has been generated and copied to your clipboard. Share it with friends to show off your progress!');
+        } catch (e) {
+            showModal('ID Generated', 'Your game ID has been generated. You can copy it from the text box below.');
+        }
+    });
+
+    importIdButton.addEventListener('click', () => {
+        const id = idInput.value;
+        if (id) {
+            importGameId(id);
+        } else {
+            showModal('Import Failed', 'Please enter a valid game ID.');
+        }
     });
   </script>
 </body>
