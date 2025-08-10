@@ -9,7 +9,7 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
 
-    /* New CSS for the floating click points animation */
+    /* CSS for the floating click points animation */
     .click-point {
         position: absolute;
         font-size: 1.5rem;
@@ -36,6 +36,7 @@
 </head>
 <body class="bg-gradient-to-br from-pink-300 via-purple-400 to-indigo-500 min-h-screen flex items-center justify-center p-4 text-gray-800">
 
+  <!-- Custom Modal for Messages -->
   <div id="messageModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-75 flex items-center justify-center transition-opacity duration-300">
     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm m-4 transform transition-transform duration-300 scale-95 hover:scale-100">
       <div class="flex justify-between items-center mb-4">
@@ -46,6 +47,7 @@
     </div>
   </div>
 
+  <!-- Local Storage Permission Modal -->
   <div id="permissionModal" class="fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center">
     <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm m-4 text-center">
       <h3 class="text-xl font-bold text-purple-600 mb-4">Save Progress?</h3>
@@ -57,10 +59,12 @@
     </div>
   </div>
 
+  <!-- Main Game Content -->
   <div id="gameContent" class="hidden flex flex-col lg:flex-row items-center justify-center gap-8 w-full max-w-6xl">
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center border-4 border-purple-300">
       <h1 class="text-5xl font-extrabold text-pink-600 mb-4 drop-shadow-md">Axolotl Clicker</h1>
 
+      <!-- Game Status Display -->
       <div id="status" class="space-y-1 mb-6">
         <p class="text-2xl font-semibold">Points: <span id="points" class="font-mono">0</span></p>
         <p class="text-lg">Points per click: <span id="pointsPerClick">1</span></p>
@@ -69,12 +73,17 @@
         <p class="text-lg">Total Clicks: <span id="clicks">0</span></p>
       </div>
 
-      <!-- The SVG has been replaced with an image tag -->
+      <!-- Clickable Axolotl Image -->
       <div id="clickButton" class="w-48 h-48 mx-auto mb-6 cursor-pointer relative">
-        <img src="axolotl.WEBP" alt="A cute axolotl to click" class="w-full h-full object-contain transition-transform duration-200 hover:scale-105">
+        <img id="axolotlImage" src="Pink.WEBP" alt="A cute axolotl to click" class="w-full h-full object-contain transition-transform duration-200 hover:scale-105">
       </div>
 
+      <!-- Game Buttons -->
       <div class="flex flex-col space-y-4">
+        <!-- Save Progress button added and styled green -->
+        <button id="saveProgressButton" class="hidden bg-green-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+          Save Progress
+        </button>
         <button id="upgradeButton" class="bg-purple-400 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
           Upgrade Click to Level 1 — Cost: <span id="upgradeCost">50</span>
         </button>
@@ -87,9 +96,6 @@
         <button id="doubleBoostButton" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
           ⚡ Double Points (15s) — Cost: 20,000
         </button>
-        <button id="saveProgressButton" class="hidden bg-gray-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
-          Save Progress
-        </button>
         <a href="https://www.youtube.com/watch?v=WO_z3jteozU" target="_blank" class="block">
           <button class="bg-purple-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full transform hover:scale-105 transition-transform">
             Watch the Tutorial!
@@ -101,11 +107,9 @@
       </button>
     </div>
 
+    <!-- Skins Panel -->
     <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border-4 border-pink-300">
       <h2 class="text-3xl font-bold text-purple-600 mb-4">Axolotl Skins</h2>
-      <!-- The skin display is no longer needed since we are using a single static image -->
-      <div id="skinDisplay" class="mb-4 hidden"></div>
-      <!-- Skins are now disabled -->
       <div id="skinButtons" class="flex flex-wrap justify-center gap-2 mb-4"></div>
       <p class="text-sm text-gray-500">Each skin costs 10,000 points.</p>
     </div>
@@ -132,7 +136,7 @@
     let bonusMultiplierActive = false;
     let clicks = 0;
     let currentSkin = 0;
-    let ownedSkins = [0];
+    let ownedSkins = [0]; // Start with the first skin owned
     let canUseLocalStorage = false;
     let autoClickerWarnings = parseInt(localStorage.getItem(autoClickerWarningsKey) || '0', 10);
 
@@ -140,14 +144,20 @@
     let clicksThisSecond = 0;
     let cps = 0;
 
-    // Define skin colors for the axolotl
-    const skinColors = ['#FF69B4', '#9932CC', '#FFFF00', '#00FF00', '#00BFFF', '#FFD700', '#FF4500'];
+    // Define skin objects with color and image URL
+    const skins = [
+      { name: 'Pink', color: '#FF69B4', file: 'Pink.WEBP' },
+      { name: 'Light Blue', color: '#87CEFA', file: 'Light.WEBP' },
+      { name: 'Blue', color: '#00BFFF', file: 'Blue.WEBP' },
+      { name: 'Brown', color: '#8B4513', file: 'Brown.WEBP' },
+      { name: 'Yellow', color: '#FFFF00', file: 'Yellow.WEBP' }
+    ];
 
     // UI elements
     const pointsEl = document.getElementById('points');
     const pointsPerClickEl = document.getElementById('pointsPerClick');
     const upgradeCostEl = document.getElementById('upgradeCost');
-    const cpsEl = document.getElementById('cps'); // New CPS element
+    const cpsEl = document.getElementById('cps');
     const autoPointLevelEl = document.getElementById('autoPointLevel');
     const clicksEl = document.getElementById('clicks');
     const clickButton = document.getElementById('clickButton');
@@ -166,7 +176,7 @@
     const permissionYesBtn = document.getElementById('permissionYes');
     const permissionNoBtn = document.getElementById('permissionNo');
     const deleteProgressButton = document.getElementById('deleteProgressButton');
-    const axolotlImage = document.querySelector('#clickButton img');
+    const axolotlImage = document.getElementById('axolotlImage');
 
     // Function to show the custom modal
     function showModal(title, body) {
@@ -185,7 +195,7 @@
       pointsEl.textContent = points.toLocaleString();
       pointsPerClickEl.textContent = pointsPerClick.toLocaleString();
       upgradeCostEl.textContent = clickUpgradeCost.toLocaleString();
-      cpsEl.textContent = cps.toLocaleString(); // Update CPS display
+      cpsEl.textContent = cps.toLocaleString();
       autoPointLevelEl.textContent = autoPointLevel.toLocaleString();
       clicksEl.textContent = clicks.toLocaleString();
       upgradeButton.innerHTML = `Upgrade Click to Level ${clickUpgradeLevel + 1} — Cost: <span id="upgradeCost">${clickUpgradeCost.toLocaleString()}</span>`;
@@ -199,27 +209,49 @@
         doubleBoostButton.classList.add('bg-yellow-500');
       }
 
-      // We no longer need to update the axolotl skin SVG, but we still update the skin buttons
+      // Update the axolotl image based on the current skin
+      axolotlImage.src = skins[currentSkin].file;
+
       updateSkinButtons();
     }
 
-    // Function to update the skin selection buttons (now disabled)
+    // Function to update the skin selection buttons
     function updateSkinButtons() {
       skinButtonsContainer.innerHTML = '';
-      skinColors.forEach((color, i) => {
+      skins.forEach((skin, i) => {
         const btn = document.createElement('div');
-        btn.classList.add('w-10', 'h-10', 'rounded-lg', 'border-4', 'transition-all', 'duration-200');
-        btn.style.backgroundColor = color;
-        // The skins are now disabled, so we only need to show which ones are owned.
+        btn.classList.add('w-10', 'h-10', 'rounded-lg', 'border-4', 'transition-all', 'duration-200', 'cursor-pointer');
+        btn.style.backgroundColor = skin.color;
+        btn.title = skin.name;
+
         if (ownedSkins.includes(i)) {
-          btn.title = 'Owned Skin (Disabled)';
-          btn.classList.add('border-gray-400', 'cursor-not-allowed');
+          // If skin is owned, make it selectable
+          btn.classList.add('border-gray-400', 'hover:scale-110');
+          btn.addEventListener('click', () => {
+            currentSkin = i;
+            updateDisplay();
+          });
         } else {
-          btn.title = 'Buy for 10,000 points (Disabled)';
-          btn.classList.add('border-gray-300', 'cursor-not-allowed', 'opacity-50');
+          // If skin is not owned, make it buyable
+          btn.classList.add('border-gray-300');
+          btn.title = `Buy ${skin.name} Skin for 10,000 points`;
+          btn.addEventListener('click', () => {
+            const skinCost = 10000;
+            if (points >= skinCost) {
+              points -= skinCost;
+              ownedSkins.push(i);
+              currentSkin = i;
+              updateDisplay();
+              saveGameState();
+              showModal('New Skin Unlocked!', `You bought the ${skin.name} skin!`);
+            } else {
+              showModal('Not Enough Points!', `You need ${skinCost.toLocaleString()} points to buy the ${skin.name} skin.`);
+            }
+          });
         }
+
         if (i === currentSkin) {
-          // The current skin is still highlighted with a pink border
+          // Highlight the currently selected skin
           btn.classList.remove('border-gray-300', 'border-gray-400');
           btn.classList.add('border-pink-500', 'scale-110');
         }
@@ -259,7 +291,7 @@
                 ownedSkins = Array.isArray(savedData.ownedSkins) ? savedData.ownedSkins : [0];
                 showModal('Game Loaded!', 'Your game progress has been loaded from your browser.');
             } else {
-                showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
+                showModal('New Game Started', 'Welcome! Your progress can now be saved.');
             }
         } catch (e) {
             console.error("Error loading from local storage:", e);
@@ -439,7 +471,7 @@
             if (savedData) {
                 loadGameState();
             } else {
-                showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
+                showModal('New Game Started', 'Welcome! Your progress can now be saved.');
             }
             gameContent.classList.remove('hidden');
             updateDisplay();
