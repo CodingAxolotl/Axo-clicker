@@ -143,6 +143,9 @@
     // CPS related variables
     let clicksThisSecond = 0;
     let cps = 0;
+    let clickPositionsThisSecond = []; // Array to store click coordinates for auto-clicker detection
+    const positionTolerance = 5; // The number of pixels a click can be off and still be considered "the same spot"
+    const cpsThreshold = 15; // The CPS needed to trigger the auto-clicker warning
 
     // Define skin objects with color and image URL
     const skins = [
@@ -340,6 +343,7 @@
       points += gain;
       clicks++;
       clicksThisSecond++; // Increment the clicks for CPS calculation
+      clickPositionsThisSecond.push({ x: e.clientX, y: e.clientY }); // Store click position
       updateDisplay();
       createClickPoint(e); // Call the new function to show the floating points
     });
@@ -439,11 +443,20 @@
     setInterval(() => {
         cps = clicksThisSecond;
         clicksThisSecond = 0; // Reset counter for the next second
-        updateDisplay();
+        
+        // Auto-clicker detection logic based on clicks per second and position
+        let isClicksAtSamePosition = false;
+        if (clickPositionsThisSecond.length > 0) {
+            const firstClick = clickPositionsThisSecond[0];
+            isClicksAtSamePosition = clickPositionsThisSecond.every(pos => 
+                Math.abs(pos.x - firstClick.x) <= positionTolerance &&
+                Math.abs(pos.y - firstClick.y) <= positionTolerance
+            );
+        }
 
-        if (cps > 20) {
+        if (cps > cpsThreshold && isClicksAtSamePosition) {
             autoClickerWarnings++;
-            localStorage.setItem(autoClickerWarningsKey, autoClickerWarnings); // Save the warning count to a separate key
+            localStorage.setItem(autoClickerWarningsKey, autoClickerWarnings);
             
             if (autoClickerWarnings >= 2) {
                 // Second offense: delete all progress and reload
@@ -455,10 +468,14 @@
                 // First offense: show warning
                 showModal(
                     'Auto Clicker Detected!',
-                    "Don't use an auto clicker! (If you use it again your progress will be deleted (over 20 CPS))"
+                    "Don't use an auto clicker! (If you use it again your progress will be deleted)"
                 );
             }
         }
+
+        // Clear the click positions for the next second
+        clickPositionsThisSecond = [];
+        updateDisplay();
     }, 1000);
 
     // Initial game setup and local storage permission
