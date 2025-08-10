@@ -120,7 +120,7 @@
     let currentSkin = 0;
     let ownedSkins = [0];
     let canUseLocalStorage = false;
-    let autoClickerWarningGiven = false;
+    let autoClickerWarnings = 0; // Changed to a number to store persistent warnings
 
     // CPS related variables
     let clicksThisSecond = 0;
@@ -218,7 +218,7 @@
         const saveData = {
             points, pointsPerClick, clickUpgradeLevel, clickUpgradeCost,
             autoPointLevel, bonusMultiplierActive, clicks, currentSkin, ownedSkins,
-            autoClickerWarningGiven
+            autoClickerWarnings
         };
         try {
             localStorage.setItem('axolotlClickerSave', JSON.stringify(saveData));
@@ -242,7 +242,7 @@
                 clicks = savedData.clicks || 0;
                 currentSkin = savedData.currentSkin || 0;
                 ownedSkins = Array.isArray(savedData.ownedSkins) ? savedData.ownedSkins : [0];
-                autoClickerWarningGiven = savedData.autoClickerWarningGiven || false;
+                autoClickerWarnings = savedData.autoClickerWarnings || 0;
                 showModal('Game Loaded!', 'Your game progress has been loaded from your browser.');
             } else {
                 showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
@@ -264,7 +264,7 @@
         clicks = 0;
         currentSkin = 0;
         ownedSkins = [0];
-        autoClickerWarningGiven = false;
+        autoClickerWarnings = 0;
         updateDisplay();
     }
     
@@ -398,14 +398,15 @@
         updateDisplay();
 
         if (cps > 20) {
-            if (autoClickerWarningGiven) {
+            autoClickerWarnings++;
+            saveGameState(); // Save the warning count
+            
+            if (autoClickerWarnings >= 2) {
                 // Second offense: delete all progress and reload
                 localStorage.clear();
                 window.location.reload();
             } else {
                 // First offense: show warning
-                autoClickerWarningGiven = true;
-                saveGameState();
                 showModal(
                     'Auto Clicker Detected!',
                     "Don't use an auto clicker! (If you use it again your progress will be deleted (over 20 CPS))"
