@@ -87,6 +87,9 @@
         <button id="doubleBoostButton" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
           ⚡ Double Points (15s) — Cost: 20,000
         </button>
+        <button id="saveProgressButton" class="hidden bg-gray-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
+          Save Progress
+        </button>
         <a href="https://www.youtube.com/watch?v=WO_z3jteozU" target="_blank" class="block">
           <button class="bg-purple-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full transform hover:scale-105 transition-transform">
             Watch the Tutorial!
@@ -109,9 +112,9 @@
   </div>
 
   <script>
-    // Failsafe check to prevent loading a game after auto-clicker punishment.
-    // This runs before the main game logic on page load.
+    // The key for auto-clicker warnings
     const autoClickerWarningsKey = 'axolotlClickerWarnings';
+    // Failsafe check to prevent loading a game after auto-clicker punishment.
     const warningsOnLoad = parseInt(localStorage.getItem(autoClickerWarningsKey) || '0', 10);
     if (warningsOnLoad >= 2) {
         localStorage.removeItem('axolotlClickerSave');
@@ -152,6 +155,7 @@
     const autoUpgradeOneButton = document.getElementById('autoUpgradeOneButton');
     const autoUpgradeTenButton = document.getElementById('autoUpgradeTenButton');
     const doubleBoostButton = document.getElementById('doubleBoostButton');
+    const saveProgressButton = document.getElementById('saveProgressButton');
     const skinButtonsContainer = document.getElementById('skinButtons');
     const gameContent = document.getElementById('gameContent');
     const messageModal = document.getElementById('messageModal');
@@ -232,6 +236,7 @@
         };
         try {
             localStorage.setItem('axolotlClickerSave', JSON.stringify(saveData));
+            showModal('Game Saved!', 'Your progress has been saved.');
         } catch (e) {
             console.error("Error saving to local storage:", e);
         }
@@ -303,7 +308,6 @@
       clicks++;
       clicksThisSecond++; // Increment the clicks for CPS calculation
       updateDisplay();
-      saveGameState();
       createClickPoint(e); // Call the new function to show the floating points
     });
     
@@ -314,7 +318,6 @@
         pointsPerClick++;
         clickUpgradeCost = Math.floor(clickUpgradeCost * 1.2);
         updateDisplay();
-        saveGameState();
       } else {
         showModal('Not enough points!', 'You need more points to upgrade your click.');
       }
@@ -330,7 +333,6 @@
         points -= cost;
         autoPointLevel++;
         updateDisplay();
-        saveGameState();
       } else {
         showModal('Not enough points!', `You need ${cost.toLocaleString()} points.`);
       }
@@ -343,7 +345,6 @@
         points -= cost;
         autoPointLevel += canBuy;
         updateDisplay();
-        saveGameState();
       } else if (autoPointLevel >= 500) {
         showModal('Max Level Reached', 'The maximum Auto Point Giver level is 500!');
       } else {
@@ -358,18 +359,20 @@
         bonusMultiplierActive = true;
         showModal('Double Points!', 'You are now getting double points for 15 seconds!');
         updateDisplay();
-        saveGameState();
         setTimeout(() => {
           bonusMultiplierActive = false;
           showModal('Boost Expired', 'The double points boost has ended.');
           updateDisplay();
-          saveGameState();
         }, 15000);
       } else if (bonusMultiplierActive) {
         showModal('Boost Active', 'The double points boost is already active.');
       } else {
         showModal('Not enough points!', `You need ${cost.toLocaleString()} points.`);
       }
+    });
+
+    saveProgressButton.addEventListener('click', () => {
+        saveGameState();
     });
     
     deleteProgressButton.addEventListener('click', () => {
@@ -397,7 +400,6 @@
         if (autoPointLevel > 500) autoPointLevel = 500;
         points += autoPointLevel;
         updateDisplay();
-        saveGameState();
     }, 1000);
 
     // CPS calculation and auto-clicker detection every second
@@ -432,6 +434,7 @@
         if (hasPermission === 'true') {
             canUseLocalStorage = true;
             permissionModal.classList.add('hidden');
+            saveProgressButton.classList.remove('hidden'); // Show save button
             const savedData = localStorage.getItem('axolotlClickerSave');
             if (savedData) {
                 loadGameState();
@@ -443,6 +446,7 @@
         } else if (hasPermission === 'false') {
             canUseLocalStorage = false;
             permissionModal.classList.add('hidden');
+            saveProgressButton.classList.add('hidden'); // Hide save button
             gameContent.classList.remove('hidden');
             updateDisplay();
         } else {
@@ -455,11 +459,12 @@
         canUseLocalStorage = true;
         localStorage.setItem('axolotlClickerPermission', 'true');
         permissionModal.classList.add('hidden');
+        saveProgressButton.classList.remove('hidden'); // Show save button
         const savedData = localStorage.getItem('axolotlClickerSave');
         if (savedData) {
             loadGameState();
         } else {
-            showModal('New Game Started', 'Welcome! Your progress will be saved automatically.');
+            showModal('New Game Started', 'Welcome! Your progress can now be saved.');
         }
         gameContent.classList.remove('hidden');
         updateDisplay();
@@ -469,6 +474,7 @@
         canUseLocalStorage = false;
         localStorage.setItem('axolotlClickerPermission', 'false');
         permissionModal.classList.add('hidden');
+        saveProgressButton.classList.add('hidden'); // Hide save button
         gameContent.classList.remove('hidden');
         updateDisplay();
         showModal('Progress Not Saved', 'Your progress will not be saved. Please click "Yes" to save data on your next visit.');
