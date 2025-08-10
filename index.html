@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Axolotl Clicker</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome for the share icon -->
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
   <script src="https://cloud.umami.is/script.js" data-website-id="d8c86780-e5be-41e5-a6dc-f84ceed23250"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
@@ -124,6 +126,10 @@
     <div class="flex space-x-2 w-full sm:w-auto">
         <button id="importIdButton" class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-purple-600 transition-colors w-full sm:w-auto">Import</button>
         <button id="generateIdButton" class="bg-pink-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-pink-600 transition-colors w-full sm:w-auto">Generate ID</button>
+        <!-- New share button -->
+        <button id="shareButton" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-blue-600 transition-colors w-full sm:w-auto">
+            <i class="fas fa-share-alt"></i> Share
+        </button>
     </div>
   </div>
 
@@ -158,6 +164,11 @@
     let clickPositionsThisSecond = []; // Array to store click coordinates for auto-clicker detection
     const positionTolerance = 5; // The number of pixels a click can be off and still be considered "the same spot"
     const cpsThreshold = 15; // The CPS needed to trigger the auto-clicker warning
+
+    // Encryption-related constants and variables
+    const subtle = window.crypto.subtle;
+    const encryptionKey = 'axolotlClickerSecretKey'; // A hardcoded key for client-side encryption. Note: not truly secure.
+    let cryptoKey;
 
     // Define skin objects with color and image URL
     const skins = [
@@ -196,6 +207,7 @@
     const idInput = document.getElementById('idInput');
     const generateIdButton = document.getElementById('generateIdButton');
     const importIdButton = document.getElementById('importIdButton');
+    const shareButton = document.getElementById('shareButton');
 
     // Function to show the custom modal
     function showModal(title, body) {
@@ -518,6 +530,9 @@
             // Show permission modal for the first time
             permissionModal.classList.remove('hidden');
         }
+        
+        // Initialize the encryption key
+        initCryptoKey();
     });
 
     permissionYesBtn.addEventListener('click', () => {
@@ -545,21 +560,92 @@
         showModal('Progress Not Saved', 'Your progress will not be saved. Please click "Yes" to save data on your next visit.');
     });
 
-    // New ID system functions
-    function generateGameId() {
+    // Helper functions for ArrayBuffer to/from Base64
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      const len = bytes.byteLength;
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return window.btoa(binary);
+    }
+
+    function base64ToArrayBuffer(base64) {
+      const binary_string = window.atob(base64);
+      const len = binary_string.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binary_string.charCodeAt(i);
+      }
+      return bytes.buffer;
+    }
+
+    // New ID system functions using Web Crypto API for encryption
+    async function initCryptoKey() {
+      // Import the hardcoded key. This is not truly secure as it's in the source code,
+      // but it provides a significant upgrade from simple encoding.
+      const keyBuffer = new TextEncoder().encode(encryptionKey);
+      const hashBuffer = await subtle.digest('SHA-256', keyBuffer);
+
+      cryptoKey = await subtle.importKey(
+        'raw',
+        hashBuffer,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    async function generateGameId() {
+        if (!cryptoKey) {
+            showModal('Error', 'Encryption key not ready. Please try again in a moment.');
+            return '';
+        }
+
         const saveData = {
             points, pointsPerClick, clickUpgradeLevel, clickUpgradeCost,
             autoPointLevel, clicks, currentSkin, ownedSkins
         };
         const jsonString = JSON.stringify(saveData);
-        // Using btoa (Base64) as a robust, built-in alternative to Base62
-        return btoa(jsonString);
+        const encodedData = new TextEncoder().encode(jsonString);
+
+        const iv = window.crypto.getRandomValues(new Uint8Array(12)); // AES-GCM recommended IV size is 12 bytes
+
+        const encryptedData = await subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            cryptoKey,
+            encodedData
+        );
+
+        // Combine IV and encrypted data and encode as Base64 for a single string
+        const fullBuffer = new Uint8Array(iv.length + encryptedData.byteLength);
+        fullBuffer.set(iv, 0);
+        fullBuffer.set(new Uint8Array(encryptedData), iv.length);
+
+        return arrayBufferToBase64(fullBuffer);
     }
 
-    function importGameId(idString) {
+    async function importGameId(idString) {
+        if (!cryptoKey) {
+            showModal('Error', 'Encryption key not ready. Please try again in a moment.');
+            return;
+        }
+
         try {
-            const decodedString = atob(idString);
-            const loadedData = JSON.parse(decodedString);
+            const fullBuffer = base64ToArrayBuffer(idString);
+            const iv = fullBuffer.slice(0, 12);
+            const encryptedData = fullBuffer.slice(12);
+
+            const decryptedData = await subtle.decrypt(
+                { name: 'AES-GCM', iv: new Uint8Array(iv) },
+                cryptoKey,
+                encryptedData
+            );
+
+            const jsonString = new TextDecoder().decode(decryptedData);
+            const loadedData = JSON.parse(jsonString);
+
             if (loadedData) {
                 points = loadedData.points || 0;
                 pointsPerClick = loadedData.pointsPerClick || 1;
@@ -580,25 +666,71 @@
             showModal('Import Failed', 'An error occurred while importing the ID. Please check if it is correct.');
         }
     }
-
-    generateIdButton.addEventListener('click', () => {
-        const id = generateGameId();
-        idInput.value = id;
-        idInput.select();
+    
+    // New, more reliable function to copy text to clipboard
+    function copyTextToClipboard(text) {
+        const tempTextarea = document.createElement('textarea');
+        tempTextarea.value = text;
+        tempTextarea.style.position = 'fixed';
+        tempTextarea.style.left = '-9999px';
+        document.body.appendChild(tempTextarea);
+        tempTextarea.focus();
+        tempTextarea.select();
         try {
             document.execCommand('copy');
-            showModal('ID Generated & Copied!', 'Your game ID has been generated and copied to your clipboard. Share it with friends to show off your progress!');
-        } catch (e) {
-            showModal('ID Generated', 'Your game ID has been generated. You can copy it from the text box below.');
+            return true;
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+            return false;
+        } finally {
+            document.body.removeChild(tempTextarea);
+        }
+    }
+
+
+    generateIdButton.addEventListener('click', async () => {
+        const id = await generateGameId();
+        if (id) {
+          idInput.value = id;
+          idInput.focus();
+          idInput.select();
+          showModal('ID Generated', 'Your game ID has been generated. Please copy the text from the box below to share or save it.');
         }
     });
 
-    importIdButton.addEventListener('click', () => {
+    importIdButton.addEventListener('click', async () => {
         const id = idInput.value;
         if (id) {
-            importGameId(id);
+            await importGameId(id);
         } else {
             showModal('Import Failed', 'Please enter a valid game ID.');
+        }
+    });
+
+    shareButton.addEventListener('click', async () => {
+        const id = await generateGameId();
+        if (!id) {
+            return; // Exit silently if no ID can be generated
+        }
+
+        const shareData = {
+            title: 'My Axolotl Clicker Progress',
+            text: `Check out my Axolotl Clicker progress! Here's my game ID: ${id}`,
+        };
+
+        if (navigator.share) {
+            // Use Web Share API if available
+            try {
+                await navigator.share(shareData);
+            } catch (err) {
+                // Do nothing as requested, no "share failed" alert
+                console.error('Share failed:', err);
+                copyTextToClipboard(shareData.text);
+            }
+        } else {
+            // Fallback for browsers that don't support Web Share API
+            copyTextToClipboard(shareData.text);
+            showModal('ID Copied!', 'Your game ID and a message have been copied to your clipboard. You can now paste it to share with friends!');
         }
     });
   </script>
