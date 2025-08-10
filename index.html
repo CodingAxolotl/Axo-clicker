@@ -403,7 +403,9 @@
             
             if (autoClickerWarnings >= 2) {
                 // Second offense: delete all progress and reload
-                localStorage.clear();
+                localStorage.removeItem('axolotlClickerSave');
+                localStorage.removeItem('axolotlClickerPermission');
+                localStorage.removeItem('axolotlClickerWarnings');
                 window.location.reload();
             } else {
                 // First offense: show warning
