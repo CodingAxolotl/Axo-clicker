@@ -161,9 +161,7 @@
     // CPS related variables
     let clicksThisSecond = 0;
     let cps = 0;
-    let clickPositionsThisSecond = []; // Array to store click coordinates for auto-clicker detection
-    const positionTolerance = 5; // The number of pixels a click can be off and still be considered "the same spot"
-    const cpsThreshold = 20; // Changed to 20 to match the user's friend's feedback.
+    const cpsThreshold = 20;
 
     // Encryption-related constants and variables
     const subtle = window.crypto.subtle;
@@ -372,7 +370,6 @@
       points += gain;
       clicks++;
       clicksThisSecond++; // Increment the clicks for CPS calculation
-      clickPositionsThisSecond.push({ x: e.clientX, y: e.clientY }); // Store click position
       updateDisplay();
       createClickPoint(e); // Call the new function to show the floating points
     });
@@ -473,17 +470,8 @@
         cps = clicksThisSecond;
         clicksThisSecond = 0; // Reset counter for the next second
         
-        // Auto-clicker detection logic based on clicks per second and position
-        let isClicksAtSamePosition = false;
-        if (clickPositionsThisSecond.length > 0) {
-            const firstClick = clickPositionsThisSecond[0];
-            isClicksAtSamePosition = clickPositionsThisSecond.every(pos => 
-                Math.abs(pos.x - firstClick.x) <= positionTolerance &&
-                Math.abs(pos.y - firstClick.y) <= positionTolerance
-            );
-        }
-
-        if (cps > cpsThreshold && isClicksAtSamePosition) {
+        // Auto-clicker detection logic based on clicks per second only
+        if (cps > cpsThreshold) {
             autoClickerWarnings++;
             localStorage.setItem(autoClickerWarningsKey, autoClickerWarnings);
             
@@ -502,8 +490,6 @@
             }
         }
 
-        // Clear the click positions for the next second
-        clickPositionsThisSecond = [];
         updateDisplay();
     }, 1000);
 
