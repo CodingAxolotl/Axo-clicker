@@ -98,9 +98,9 @@
         <button id="doubleBoostButton" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
           ⚡ Double Points (15s) — Cost: 20,000
         </button>
-        <a href="https://www.youtube.com/watch?v=WO_z3jteozU" target="_blank" class="block">
+        <a href="https://discord.gg/HhSK2VsvP5" target="_blank" class="block">
           <button class="bg-purple-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg w-full transform hover:scale-105 transition-transform">
-            Watch the Tutorial!
+            Join my discord server!
           </button>
         </a>
       </div>
@@ -163,7 +163,7 @@
     let cps = 0;
     let clickPositionsThisSecond = []; // Array to store click coordinates for auto-clicker detection
     const positionTolerance = 5; // The number of pixels a click can be off and still be considered "the same spot"
-    const cpsThreshold = 15; // The CPS needed to trigger the auto-clicker warning
+    const cpsThreshold = 20; // Changed to 20 to match the user's friend's feedback.
 
     // Encryption-related constants and variables
     const subtle = window.crypto.subtle;
@@ -172,6 +172,7 @@
 
     // Define skin objects with color and image URL
     const skins = [
+      // Updated to use the .WEBP files you provided
       { name: 'Pink', color: '#FF69B4', file: 'Pink.WEBP' },
       { name: 'Light Blue', color: '#87CEFA', file: 'Light.WEBP' },
       { name: 'Blue', color: '#00BFFF', file: 'Blue.WEBP' },
@@ -252,6 +253,7 @@
       skins.forEach((skin, i) => {
         const btn = document.createElement('div');
         btn.classList.add('w-10', 'h-10', 'rounded-lg', 'border-4', 'transition-all', 'duration-200', 'cursor-pointer');
+        // Set the background color instead of a background image
         btn.style.backgroundColor = skin.color;
         btn.title = skin.name;
 
